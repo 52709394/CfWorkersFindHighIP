@@ -1,0 +1,16 @@
+{
+  "name": "my-sub",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "wrangler": "^4.38.0"
+  },
+  "dependencies": {
+    "qr-image": "^3.2.0"
+  }
+}
