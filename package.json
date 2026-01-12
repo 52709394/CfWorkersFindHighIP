@@ -1,5 +1,5 @@
 {
-  "name": "my-sub",
+  "name": "cf-workers-find-high-ip",
   "version": "1.0.0",
   "scripts": {
     "deploy": "wrangler deploy",
