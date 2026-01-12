@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>find CF high ip</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        select {
+            display: block;
+            margin: 0 auto 10px auto;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 6px 12px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-top: 10px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            margin-top: 10px;
+            padding: 6px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 8px 16px;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <!-- 选择处理模式 -->
+    <select id="mode" onchange="selectMode(this.value)">
+        <option value=""></option>
+        <option value="appInfo">工具 基本使用 方法</option>
+        <option value="getCensys">获取 censys 方法</option>
+        <option value="getFofa"> 获取 fofa 方法 </option>
+        <option value="getIpList"> 获取 ip段 列表 </option>
+        <option value="setCensys">censys 文本处理</option>
+        <option value="setFofa">fofa 文本处理</option>
+        <option value="toIpPort">url to ip&port </option>
+        <option value="toUrl"> ip&port to Url </option>
+    </select>
+
+    <!-- 输入文本 -->
+    <textarea id="input"></textarea>
+
+    <!-- 附加文本 -->
+    <input type="text" id="extra">
+
+    <button id="send" onclick="send()">提交</button>
+
+    <button id="clear" style="float: right;" onclick="_clear()">清除</button>
+
+    <textarea id="output" readonly></textarea>
+
+    <button id="copy" onclick="copy()">复制</button>
+
+    <script>
+
+        let ModeVar = ""
+
+        function selectMode(mode) {
+
+            if (ModeVar === mode) {
+                return
+            }
+
+            ModeVar = mode
+
+            document.getElementById("input").value = "";
+            document.getElementById("output").value = "";
+            document.getElementById("extra").value = "";
+
+            if (mode === "appInfo" || mode === "getCensys" || mode === "getFofa" || mode === "getIpList") {
+                document.getElementById("input").readOnly = true
+                document.getElementById("extra").style.visibility = 'hidden'
+                document.getElementById("send").style.visibility = 'hidden'
+                document.getElementById("clear").style.visibility = 'hidden'
+                document.getElementById("copy").style.visibility = 'hidden'
+                document.getElementById("output").style.visibility = 'hidden'
+            } else {
+                document.getElementById("input").readOnly = false
+                document.getElementById("extra").style.visibility = 'visible'
+                document.getElementById("send").style.visibility = 'visible'
+                document.getElementById("clear").style.visibility = 'visible'
+                document.getElementById("copy").style.visibility = 'visible'
+                document.getElementById("output").style.visibility = 'visible'
+                return
+            }
+
+            let inputText = ""
+
+            if (mode === "appInfo") {
+                inputText = appInfoText()
+            } else if (mode === "getCensys") {
+                inputText = getCensysText()
+            } else if (mode === "getFofa") {
+                inputText = getFofaText()
+
+            } else if (mode === "getIpList") {
+                inputText = getIpListText()
+            }
+
+            inputText = inputText.replace(/^\s*/gm, '');
+            inputText = inputText.replace(/\*n\*/g, "\n")
+
+            document.getElementById("input").value = inputText
+        }
+
+        function send() {
+            const text = document.getElementById("input").value;
+            const mode = document.getElementById("mode").value;
+            const extra = document.getElementById("extra").value;
+
+            let resultLines;
+            if (mode === "setCensys") {
+                let urls = ""
+                const match = splitUrl(extra)
+
+                if (!match) {
+                    return ""
+                }
+
+                for (const ipText of splitCensysByIP(text)) {
+                    urls += setCensysProxyUrl(ipText, match)
+                }
+                resultLines = urls;
+            } else if (mode === "setFofa") {
+
+                resultLines = setFofaProxyUrl(text, extra)
+
+            } else if (mode === "toIpPort") {
+                let ips = ""
+                const ipPortRe = /\@(\d+\.\d+\.\d+\.\d+)\:(\d+)\?/g;
+
+                const matches = text.matchAll(ipPortRe)
+                for (const p of matches) {
+                    if (extra) {
+                        ips += `${p[1]},${p[2]}#${extra}\n`
+                    } else {
+                        ips += `${p[1]},${p[2]}\n`
+                    }
+
+                }
+                resultLines = ips
+            } else if (mode === "toUrl") {
+                resultLines = setProxyUrl(text, extra)
+
+            } else {
+                resultLines = "";
+            }
+
+            if (resultLines === "") {
+                alert('没找到任何结果,请检查模式或输入文本是否正常!')
+            }
+
+            document.getElementById("output").value = resultLines;
+        }
+
+        function splitUrl(url) {
+            const re = /^(.*?\@).*?\:\d+(\?.*)$/
+            const match = url.match(re)
+
+            if (!match) {
+                if (url.startsWith("vmess://")) {
+
+                    const str = base64DecodeUnicode(url.slice(8))
+
+                    if (str) {
+                        let vmessUrl = ["", "", ""]
+                        const json = JSON.parse(str)
+                        if (json.id && json.host && json.sni) {
+
+                            vmessUrl[1] = "vmess://" + json.id + "@"
+                            vmessUrl[2] = "?encryption=auto" +
+                                "&type=" + json.net +
+                                "&security=tls" +
+                                "&path=" + encodeURIComponent(json.path) +
+                                "&host=" + json.host +
+                                "&fp=chrome" +
+                                "&sni=" + json.sni +
+                                "#" + encodeURIComponent(json.ps)
+                            return vmessUrl
+                        }
+                    }
+                }
+                alert('提供"VLESS"或"VMESS"格式不正确!')
+            }
+
+            return match
+        }
+
+        function setCensysProxyUrl(text, urlMatch) {
+
+            let urls = ""
+            const ipMatch = text.match(/\d+\.\d+\.\d+\.\d+/)
+            const portsMatch = text.matchAll(/\s*(\d+)\s*\/\s*HTTP/g)
+            for (const p of portsMatch) {
+                const ip = ipMatch[0] + ":" + p[1]
+                urls += urlMatch[1] + ip + urlMatch[2] + "\n"
+            }
+            return urls
+        }
+
+        function splitCensysByIP(text) {
+            const ipRe = /\d+\.\d+\.\d+\.\d+/g
+            const result = []
+
+            // 1. 找第一个 IP
+            const firstMatch = text.match(ipRe)
+            if (!firstMatch) {
+                return result
+            }
+
+            const firstIndex = text.indexOf(firstMatch[0])
+
+            // 切掉前面的垃圾文本
+            text = text.slice(firstIndex)
+
+            while (true) {
+                // 2. 找当前 text 里的前两个 IP
+                const matches = [...text.matchAll(ipRe)]
+
+                if (matches.length === 1) {
+                    // 最后一个 IP，全部加入
+                    result.push(text.trim())
+                    break
+                }
+
+                // 第二个 IP 的起始位置
+                const secondIPIndex = matches[1].index
+
+                const block = text.slice(0, secondIPIndex)
+                result.push(block.trim())
+
+                // 切掉已处理部分
+                text = text.slice(secondIPIndex)
+            }
+
+            return result
+        }
+
+        function setFofaProxyUrl(text, proxyUrl) {
+
+            const urlMatch = splitUrl(proxyUrl)
+
+            if (!urlMatch) {
+                return ""
+            }
+
+            let urls = ""
+            const ipRe = /^\s*https:\/\/(\d+\.\d+\.\d+\.\d+(?:\:\d+)?)\s+/mg;
+
+
+            for (const p of text.matchAll(ipRe)) {
+                let ip
+                if (p[1].match(/\:\d+$/)) {
+                    ip = p[1]
+                } else {
+                    ip = p[1] + ":443"
+                }
+                urls += urlMatch[1] + ip + urlMatch[2] + "\n"
+            }
+            return urls
+        }
+
+        function setProxyUrl(text, proxyUrl) {
+
+            const urlMatch = splitUrl(proxyUrl)
+
+            if (!urlMatch) {
+                return ""
+            }
+
+            let urls = ""
+            const ipRe = /(\d+\.\d+\.\d+\.\d+)\s*\,\s*(\d+)/g;
+
+
+            for (const p of text.matchAll(ipRe)) {
+                const ip = p[1] + ":" + p[2]
+
+                urls += urlMatch[1] + ip + urlMatch[2] + "\n"
+            }
+            return urls
+        }
+
+        function _clear() {
+            document.getElementById("input").value = "";
+            document.getElementById("extra").value = "";
+        }
+
+        function copy() {
+
+            const textToCopy = document.getElementById("output").value;
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    console.log('文本已成功复制到剪贴板');
+                    alert('复制成功！');
+                })
+                .catch(err => {
+                    console.error('复制失败: ', err);
+                    alert('复制失败，请检查浏览器权限。');
+                });
+        }
+
+        function isBase64(str) {
+            return /^[A-Za-z0-9+/]+={0,2}$/.test(str) && str.length % 4 === 0;
+        }
+
+        function base64DecodeUnicode(str) {
+            if (!isBase64(str)) return '';
+
+            try {
+                return decodeURIComponent(atob(str).split('').map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            } catch {
+                return '';
+            }
+        }
+
+        function appInfoText() {
+            return `
+            1.选择框,选处理模式或查看教程
+            2.第一个文本框,主要粘贴要处理的数据
+            3.第二个条形框,只要粘贴 你的 任意 cf 链接 (VMESS链接明码,不能 为vmess://base64) , 或 url to ip&port 的名称 
+            4.第三个文本框,处理数据,后的结果
+            `
+        }
+
+        function getCensysText() {
+            return `
+            搜索引擎:https://platform.censys.io (复杂,搜索精准高,要找到更好结果的老司机选择)
+            (免费账号,每月 搜索100次, 每页100条,不能翻页,无法下载(其实不登录一样可以搜索,换ip就可以,不过额度好低)
+            不要点击看详细ip信息,会消耗额度(勿点), 
+            因为每次100条, 所以 搜索 ip段 不要设置太大, host.ip:{x.x.x.x/24 , x.x.x.x/24} 两三个 x.x.x.x/24 段 同时搜索 ,或 单个 x.x.x.x/16 ,具体看结果添加ip段 
+            但命中率高,更新快)
+            *n*
+            1.搜索
+            1.1.搜索完整代码例子(在免费额度高效找出有用ip):
+            host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.autonomous_system.asn:"906" and host.location.country="United States" and host.ip:{"154.17.0.0/16" , "154.21.0.0/16" , "154.26.0.0/16" , "69.63.0.0/16"}
+            *n*
+            1.2.搜索代码分析: 
+            1.2.1.不用改动部分,(cf 信息与状态)
+            host.services.software:(vendor = "cloudflare" and product = "waf") 
+            host.services.endpoints.http.status_code:"403" //改 "400" 精度更高
+            ( 或 一起 使用,
+             host.services.endpoints:(http.status_code:"403" or http.status_code:"400")
+            )
+             1.2.2.主要改动部分
+             host.autonomous_system.asn:"906" // 指定 vps 的 asn (例如: "25820")
+             host.location.country="United States" // 指定 vps 的 地区 (例如: HongKong)
+             host.ip:{"154.17.0.0/16" , "154.21.0.0/16" , "154.26.0.0/16" , "69.63.0.0/16"} // 指定 搜索的ip段 (例子中,已经超过100条,免费额度不够)
+             ( 
+             如果 搜索 x.x.x.x/24 (可以从 https://bgp.he.net 找到 asn 的 ip段 ) 不用指定 host.autonomous_system.asn , host.location.country (建议两三个/24,不然容易超过100条)
+             例子: host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.ip:"154.17.224.0/24" // 不建议单个ip段,容易浪费额度 多个ip段 host.ip:{"154.17.224.0/24","154.17.225.0/24","154.17.226.0/24"}
+             如果 搜索 x.x.x.x/16 , x.x.x.x/8 需要指定 host.autonomous_system.asn , host.location.country (/16 , /8 ip太多 会现在 其他 asn 其他 地区的ip ,免费额度不够)
+             例子: host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.autonomous_system.asn:"906" and host.location.country="United States" and host.ip:"154.17.0.0/16"  // 不建议单个ip段,容易浪费额度 多个ip段 host.ip:{ "154.26.0.0/16" , "69.0.0.0/8}
+             )
+             *n*
+             2.下载结果:
+             免费用户是无法下载,只能网页提取数据, 直接 选中所有 网页 搜索出来的结果,然后复制! (复制ip信息部分既可,自动去取网页样式和布局)
+             *n*
+             3.数据处理:
+             3.1.选择 censys 文本处理 模式
+             3.2.数据粘贴到 第一个文本框
+             3.3.你的 任意 cf 链接 粘贴到 第二个条形框 (VMESS链接明码,不能 为vmess://base64)
+             3.4.点击提交 , 第三个文本框出结果
+             *n*
+             4.测试结果:
+             4.1.生成链接,不是所以都有效的,需要使用v2rayN 大量测试
+             4.2.建议在,v2rayN,创建一个测试组
+             4.3.将结果粘贴到测试组,按 Crtl+a 全选, 再 按 Crtl+r 测试 链接, 有延迟,就是可用的!
+             4.4.点击延迟排序,再选中无效的链接再测多几次(找漏网之鱼)
+             4.5.最后,v2rayN 鼠标 右键菜单选择 按测试结果移除无效             
+        `
+        }
+
+        function getFofaText() {
+            return `
+           搜索引擎:https://fofa.info (比较简单,搜索精准低,小白优先选择)
+           (免费账号,每月 搜索300次,下载3000条
+           简单易用,但更新慢,一些数据过时)
+           *n*
+           1.搜索
+           1.1.搜索完整代码例子(在免费额度高效找出有用ip):
+           cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn=="906" && country=="US" && (ip="154.17.0.0/16" || ip="154.21.0.0/16" || ip="154.26.0.0/16" || ip="69.63.0.0/16")
+           *n*
+           1.2.搜索代码分析: 
+           1.2.1.不用改动部分,(cf 信息与状态)
+           cloud_name="Cloudflare" 
+           status_code="403"
+           tls.version="TLS 1.3"
+           1.2.2.主要改动部分:
+           asn=="906" // 指定 vps 的 asn (例如: "25820")
+           country=="US" // 指定 vps 的 地区 (例如: HK)
+           (ip="154.17.0.0/16" || ip="154.21.0.0/16" || ip="154.26.0.0/16" || ip="69.63.0.0/16") // 指定 搜索的ip段  (例子中,之前搜索过大约有700多条,免费额度完全够下载,不过会有漏网之鱼)
+           ( 
+           如果 搜索 x.x.x.x/24 (可以从 https://bgp.he.net 找到 asn 的 ip段 ) 不用指定 asn , country 
+           例子:  cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && ip="154.17.224.0/24" // 不建议单个ip段,容易浪费额度 多个ip段 (ip="154.17.224.0/24" || ip="154.17.225.0/24" || ip="154.17.226.0/24" )
+           如果 搜索 x.x.x.x/16 , x.x.x.x/8 需要指定 asn , country (/16 , /8 ip太多,额度免费不够)
+           例子: cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn=="906" && country=="US" && ip="154.17.0.0/16" // 不建议单个ip段,容易浪费额度 多个ip段 (ip="154.17.0.0/16" || ip="69.0.0.0/8")
+           )
+           *n*
+           2.下载结果:
+           fofa.info 保存结果,下载csv文件,复制所有csv文件内容
+           *n*
+           3.数据处理:
+           3.1.选择 fofa 文本处理 模式
+           3.2.数据粘贴到 第一个文本框
+           3.3.你的 任意 cf 链接 粘贴到 第二个条形框 (VMESS链接明码,不能 为vmess://base64)
+           3.4.点击提交 , 第三个文本框出结果
+           *n*
+           4.测试结果:
+           4.1.生成链接,不是所以都有效的,需要使用v2rayN 大量测试
+           4.2.建议在,v2rayN,创建一个测试组
+           4.3.将结果粘贴到测试组,按 Crtl+a 全选, 再 按 Crtl+r 测试 链接, 有延迟,就是可用的!
+           4.4.点击延迟排序,再选中无效的链接再测多几次(找漏网之鱼)
+           4.5.最后,v2rayN 鼠标 右键菜单选择 按测试结果移除无效
+        `
+        }
+
+        function getIpListText() {
+            return `
+            搜索引擎:https://bgp.he.net
+            用 bgp.he.net 查 ASN → 看 IPv4 Prefixes
+            *n*
+            大妈云 所有ipv4段:
+            https://bgp.he.net/AS906#_prefixes
+            (例如: 154.17.224.0/24 段 等等 )
+            *n*
+            瓦工云 所有ipv4段:
+            https://bgp.he.net/AS25820#_prefixes
+            (例如: 144.34.224.0/20 段 等等 )
+            *n*
+            阿里云 所有ipv4段:
+            https://bgp.he.net/AS45102#_prefixes
+            (例如: 8.218.0.0/16 段 等等 , 主要 香港节点 , 非晚高峰,还是能用的)
+            *n*
+            *n*
+            如何找出优化ip:
+            首先 在 x.x.x.x/24 ping (例如: 154.17.224.0/24 154.17.224.0-154.17.224.255 中 随机能 ping 通的 ip)
+            然后上 https://ping.pe 测试 ip 
+            主要观察 ip 的 延迟 , 掉包 是否稳定
+            重要查看国内去程有包含优化线路(AS4089,AS9929,AS58807 有可以确定为优化线路)
+
+        `
+        }
+
+
+    </script>
+
+</body>
+
+</html>
