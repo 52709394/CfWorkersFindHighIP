@@ -110,18 +110,17 @@
             let inputText = ""
 
             if (mode === "appInfo") {
-                inputText = appInfoText()
+                inputText = appInfoText();
             } else if (mode === "getCensys") {
-                inputText = getCensysText()
+                inputText = getCensysText();
             } else if (mode === "getFofa") {
-                inputText = getFofaText()
+                inputText = getFofaText();
             } else if (mode === "getIpList") {
-                inputText = getIpListText()
+                inputText = getIpListText();
 			} else if (mode === "dmitHighIp") {
-				inputText = dmitHighIpText()
-			}		
+				inputText = dmitHighIpText();		
             } else if (mode === "bwhHighIp") {
-				inputText = bwhHighIpText()
+				inputText = bwhHighIpText();
 			}	
 
             inputText = inputText.replace(/^\s*/gm, '');
@@ -138,7 +137,7 @@
             let resultLines;
             if (mode === "setCensys") {
                 let urls = ""
-                const match = splitUrl(extra)
+                const match = splitUrl(extra);
 
                 if (!match) {
                     return ""
