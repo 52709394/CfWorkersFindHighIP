@@ -47,8 +47,10 @@
         <option value="getCensys">获取 censys 方法</option>
         <option value="getFofa"> 获取 fofa 方法 </option>
         <option value="getIpList"> 获取 ip段 列表 </option>
-		<option value="dmitHighIp"> 大妈 ip段 列表 </option>
-		<option value="bwhHighIp"> 瓦工 ip段 列表 </option>	
+        <option value="dmitHighIp"> 大妈 ip段 列表 </option>
+        <option value="bwhHighIp"> 瓦工 ip段 列表 </option>
+        <option value="generateCensys">生成 censys 代码</option>
+        <option value="generateFofa">生成 fofa 代码</option>
         <option value="setCensys">censys 文本处理</option>
         <option value="setFofa">fofa 文本处理</option>
         <option value="toIpPort">url to ip&port </option>
@@ -75,22 +77,36 @@
 
         function selectMode(mode) {
 
+            const modeList = [
+                "appInfo",
+                "getCensys",
+                "getFofa",
+                "getIpList",
+                "dmitHighIp",
+                "bwhHighIp"
+            ]
+
+            let isHidden = false
+
+
             if (ModeVar === mode) {
                 return
             }
 
             ModeVar = mode
 
+            for (const m of modeList) {
+                if (m === mode) {
+                    isHidden = true
+                    continue
+                }
+            }
+
             document.getElementById("input").value = "";
             document.getElementById("output").value = "";
             document.getElementById("extra").value = "";
 
-            if (mode === "appInfo" ||
-				mode === "getCensys" || 
-				mode === "getFofa" || 
-				mode === "getIpList" ||
-				mode === "dmitHighIp" ||
-			    mode === "bwhHighIp") {
+            if (isHidden) {
                 document.getElementById("input").readOnly = true
                 document.getElementById("extra").style.visibility = 'hidden'
                 document.getElementById("send").style.visibility = 'hidden'
@@ -117,11 +133,11 @@
                 inputText = getFofaText();
             } else if (mode === "getIpList") {
                 inputText = getIpListText();
-			} else if (mode === "dmitHighIp") {
-				inputText = dmitHighIpText();		
+            } else if (mode === "dmitHighIp") {
+                inputText = dmitHighIpText();
             } else if (mode === "bwhHighIp") {
-				inputText = bwhHighIpText();
-			}	
+                inputText = bwhHighIpText();
+            }
 
             inputText = inputText.replace(/^\s*/gm, '');
             inputText = inputText.replace(/\*n\*/g, "\n")
@@ -135,7 +151,11 @@
             const extra = document.getElementById("extra").value;
 
             let resultLines;
-            if (mode === "setCensys") {
+            if (mode === "generateCensys") {
+                resultLines = generateCensysStr(text, extra)
+            } else if (mode === "generateFofa") {
+                resultLines = generateFofaStr(text, extra)
+            } else if (mode === "setCensys") {
                 let urls = ""
                 const match = splitUrl(extra);
 
@@ -177,6 +197,63 @@
             }
 
             document.getElementById("output").value = resultLines;
+        }
+
+        function generateCensysStr(text, extra) {
+            let cmd = 'host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:{ 400, 403} and '
+            const re = /^\s*(\d+\.\d+\.\d+\.\d+\/\d+)/gm
+            matches = text.matchAll(re)
+
+            if (!matches) {
+                return ""
+            }
+
+            const ipcs = Array.from(matches)
+
+            if (ipcs.length == 1) {
+                cmd += `host.ip:"${ipcs[0][1]}"`
+                return cmd
+            }
+
+            cmd += `host.ip:{ "${ipcs[0][1]}"`
+
+            for (let i = 1; i < ipcs.length; i++) {
+                cmd += `, "${ipcs[i][1]}"`
+
+            }
+
+            cmd += '}'
+            return cmd
+
+        }
+
+        function generateFofaStr(text, extra) {
+
+            let cmd = 'cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && '
+            const re = /^\s*(\d+\.\d+\.\d+\.\d+\/\d+)/gm
+            matches = text.matchAll(re)
+
+            if (!matches) {
+                return ""
+            }
+
+            const ipcs = Array.from(matches)
+
+            if (ipcs.length == 1) {
+                cmd += `ip="${ipcs[0][1]}"`
+                return cmd
+            }
+
+            cmd += `( ip="${ipcs[0][1]}"`
+
+            for (let i = 1; i < ipcs.length; i++) {
+                cmd += `|| ip="${ipcs[i][1]}"`
+
+            }
+
+            cmd += ')'
+            return cmd
+
         }
 
         function splitUrl(url) {
@@ -379,6 +456,10 @@
              如果 搜索 x.x.x.x/16 , x.x.x.x/8 需要指定 host.autonomous_system.asn , host.location.country (/16 , /8 ip太多 会现在 其他 asn 其他 地区的ip ,免费额度不够)
              例子: host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.autonomous_system.asn:"906" and host.location.country="United States" and host.ip:"154.17.0.0/16"  // 不建议单个ip段,容易浪费额度 多个ip段 host.ip:{ "154.26.0.0/16" , "69.0.0.0/8}
              )
+             ps.生成搜索代码(高效并节约额度)
+             先在 https://bgp.he.net 找到 vps 供应商 的 ip 段 (可选择工具自带, 获取 ip段 列表 或  各 vps 优化 ip 段列表 查看 ip 段)
+             选择 生成 censys 代码 , 复制 ip 段(格式: x.x.x.x/x .... ,后面没用代码自动过滤,建议一次不要太多ip段)
+             粘贴到一个文本框,点击提交,即可生成!
              *n*
              2.下载结果:
              免费用户是无法下载,只能网页提取数据, 直接 选中所有 网页 搜索出来的结果,然后复制! (复制ip信息部分既可,自动去取网页样式和布局)
@@ -422,6 +503,10 @@
            例子:  cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && ip="154.17.224.0/24" // 不建议单个ip段,容易浪费额度 多个ip段 (ip="154.17.224.0/24" || ip="154.17.225.0/24" || ip="154.17.226.0/24" )
            如果 搜索 x.x.x.x/16 , x.x.x.x/8 需要指定 asn , country (/16 , /8 ip太多,额度免费不够)
            例子: cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn=="906" && country=="US" && ip="154.17.0.0/16" // 不建议单个ip段,容易浪费额度 多个ip段 (ip="154.17.0.0/16" || ip="69.0.0.0/8")
+           ps.生成搜索代码(高效并节约额度)
+           先在 https://bgp.he.net 找到 vps 供应商 的 ip 段 (可选择工具自带, 获取 ip段 列表 或  各 vps 优化 ip 段列表 查看 ip 段)
+           选择 生成 fofa 代码 , 复制 ip 段(格式: x.x.x.x/x .... ,后面没用代码自动过滤,建议一次不要太多ip段)
+           粘贴到一个文本框,点击提交,即可生成!
            )
            *n*
            2.下载结果:
@@ -469,7 +554,7 @@
         `
         }
 
-	function dmitHighIpText() {
+        function dmitHighIpText() {
             return `
             大妈 优化 ip 段
 			*n*
@@ -593,7 +678,7 @@
         }
 
 
-	function bwhHighIpText() {
+        function bwhHighIpText() {
             return `
 			瓦工 优化 ip段
 			*n*
@@ -666,7 +751,7 @@
 			216.24.188.0/22
         `
         }
-		
+
     </script>
 
 </body>
