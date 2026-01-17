@@ -58,23 +58,29 @@
         <option value="toUrl"> ip&port to Url </option>
     </select>
 
-    <!-- 输入文本 -->
-    <textarea id="input"></textarea>
+    <div id="info"></div>
 
-    <!-- 附加文本 -->
-    <input type="text" id="extra">
+    <div id="main">
+        <!-- 输入文本 -->
+        <textarea id="input"></textarea>
 
-    <button id="send" onclick="send()">提交</button>
+        <!-- 附加文本 -->
+        <input type="text" id="extra">
 
-    <button id="clear" style="float: right;" onclick="_clear()">清除</button>
+        <button id="send" onclick="send()">提交</button>
 
-    <textarea id="output" readonly></textarea>
-
-    <button id="copy" onclick="copy()">复制</button>
+        <button style="float: right;" onclick="_clear()">清除</button>
+        <p></p>
+        <div id="output"></div>
+        <p></p>
+        <button id="copy" onclick="copy()">复制</button>
+    </div>
 
     <script>
 
         let ModeVar = ""
+        let UserDate = ""
+        document.getElementById("copy").style.visibility = 'hidden';
 
         function selectMode(mode) {
 
@@ -88,7 +94,7 @@
                 "as979HighIp"
             ]
 
-            let isHidden = false
+            let isInfo = false
 
 
             if (ModeVar === mode) {
@@ -99,60 +105,60 @@
 
             for (const m of modeList) {
                 if (m === mode) {
-                    isHidden = true
+                    isInfo = true
                     continue
                 }
             }
 
             document.getElementById("input").value = "";
-            document.getElementById("output").value = "";
+            document.getElementById("output").innerHTML = "";
             document.getElementById("extra").value = "";
+            UserDate = "";
 
-            if (isHidden) {
-                document.getElementById("input").readOnly = true
-                document.getElementById("extra").style.visibility = 'hidden'
-                document.getElementById("send").style.visibility = 'hidden'
-                document.getElementById("clear").style.visibility = 'hidden'
-                document.getElementById("copy").style.visibility = 'hidden'
-                document.getElementById("output").style.visibility = 'hidden'
+            if (isInfo) {
+                document.getElementById("main").style.visibility = 'hidden'
+                document.getElementById("info").style.visibility = 'visible'
             } else {
-                document.getElementById("input").readOnly = false
-                document.getElementById("extra").style.visibility = 'visible'
-                document.getElementById("send").style.visibility = 'visible'
-                document.getElementById("clear").style.visibility = 'visible'
-                document.getElementById("copy").style.visibility = 'visible'
-                document.getElementById("output").style.visibility = 'visible'
+
+                document.getElementById("info").innerHTML = ""
+                document.getElementById("main").style.visibility = 'visible'
+                document.getElementById("info").style.visibility = 'hidden'
+                document.getElementById("copy").style.visibility = 'hidden'
+
                 return
             }
 
-            let inputText = ""
+            let text = ""
 
             if (mode === "appInfo") {
-                inputText = appInfoText();
+                text = appInfoText();
             } else if (mode === "getCensys") {
-                inputText = getCensysText();
+                text = getCensysText();
             } else if (mode === "getFofa") {
-                inputText = getFofaText();
+                text = getFofaText();
             } else if (mode === "getIpList") {
-                inputText = getIpListText();
+                text = getIpListText();
             } else if (mode === "dmitHighIp") {
-                inputText = dmitHighIpText();
+                text = dmitHighIpText();
+                text = text.replace(/\n/g, "<br\>");
             } else if (mode === "bwhHighIp") {
-                inputText = bwhHighIpText();
+                text = bwhHighIpText();
+                text = text.replace(/\n/g, "<br\>");
             } else if (mode === "as979HighIp") {
-                inputText = as979HighIpText();
+                text = as979HighIpText();
+                text = text.replace(/\n/g, "<br\>");
             }
 
-            inputText = inputText.replace(/^\s*/gm, '');
-            inputText = inputText.replace(/\*n\*/g, "\n")
 
-            document.getElementById("input").value = inputText
+
+            document.getElementById("info").innerHTML = text
         }
 
         function send() {
             const text = document.getElementById("input").value;
             const mode = document.getElementById("mode").value;
             const extra = document.getElementById("extra").value;
+            UserDate = "";
 
             let resultLines;
             if (mode === "generateCensys") {
@@ -170,10 +176,29 @@
                 for (const ipText of splitCensysByIP(text)) {
                     urls += setCensysProxyUrl(ipText, match)
                 }
-                resultLines = urls;
+
+                UserDate = urls;
+                resultLines = urls.replace(/\n/g, "<br\>");
+
+                if (UserDate) {
+                    document.getElementById("copy").style.visibility = 'visible';
+                } else {
+                    document.getElementById("copy").style.visibility = 'hidden';
+                }
+
             } else if (mode === "setFofa") {
 
-                resultLines = setFofaProxyUrl(text, extra)
+
+                const urls = setFofaProxyUrl(text, extra);
+                UserDate = urls;
+                resultLines = urls.replace(/\n/g, "<br\>");
+
+                if (UserDate) {
+                    document.getElementById("copy").style.visibility = 'visible';
+                } else {
+                    document.getElementById("copy").style.visibility = 'hidden';
+                }
+
 
             } else if (mode === "toIpPort") {
                 let ips = ""
@@ -188,9 +213,27 @@
                     }
 
                 }
-                resultLines = ips
+
+                UserDate = ips
+                resultLines = ips.replace(/\n/g, "<br\>");
+
+                if (UserDate) {
+                    document.getElementById("copy").style.visibility = 'visible';
+                } else {
+                    document.getElementById("copy").style.visibility = 'hidden';
+                }
+
             } else if (mode === "toUrl") {
-                resultLines = setProxyUrl(text, extra)
+                const urls = setProxyUrl(text, extra)
+                UserDate = urls
+                resultLines = urls.replace(/\n/g, "<br\>");
+
+                if (UserDate) {
+                    document.getElementById("copy").style.visibility = 'visible';
+                } else {
+                    document.getElementById("copy").style.visibility = 'hidden';
+                }
+
 
             } else {
                 resultLines = "";
@@ -204,7 +247,8 @@
                 }
             }
 
-            document.getElementById("output").value = resultLines;
+
+            document.getElementById("output").innerHTML = resultLines;
         }
 
         function generateCensysUrl(text, extra) {
@@ -232,7 +276,13 @@
                 cmd += '}'
             }
 
-            return 'https://platform.censys.io/search?q=' + encodeURIComponent(cmd)
+            const url = 'https://platform.censys.io/search?q=' + encodeURIComponent(cmd)
+
+            return `
+            <p>搜索引擎: <a href="https://platform.censys.io" target="_blank" rel="noopener noreferrer" > https://platform.censys.io </a></p>
+            <p>搜索代码: ${cmd}</p>
+            <p><a href="${url}" target="_blank" rel="noopener noreferrer" >${url}</a></p>
+            `
 
         }
 
@@ -260,8 +310,13 @@
                 cmd += ')'
             }
 
+            const url = 'https://fofa.info/result?qbase64=' + toQBase64(cmd)
 
-            return 'https://fofa.info/result?qbase64=' + toQBase64(cmd)
+            return `
+            <p>搜索引擎: <a href="https://fofa.info" target="_blank" rel="noopener noreferrer" > https://fofa.info </a></p>
+            <p>搜索代码: ${cmd}</p>
+            <p><a href="${url}"  target="_blank" rel="noopener noreferrer" >${url}</a></p>
+            `
 
         }
 
@@ -307,6 +362,7 @@
                 const ip = ipMatch[0] + ":" + p[1]
                 urls += urlMatch[1] + ip + urlMatch[2] + "\n"
             }
+
             return urls
         }
 
@@ -369,6 +425,7 @@
                 }
                 urls += urlMatch[1] + ip + urlMatch[2] + "\n"
             }
+
             return urls
         }
 
@@ -389,6 +446,7 @@
 
                 urls += urlMatch[1] + ip + urlMatch[2] + "\n"
             }
+
             return urls
         }
 
@@ -397,16 +455,15 @@
             document.getElementById("extra").value = "";
         }
 
-        function copy() {
-
-            const textToCopy = document.getElementById("output").value;
-            navigator.clipboard.writeText(textToCopy)
+        function copy(text = UserDate) {
+            if (text === "") {
+                return
+            }
+            navigator.clipboard.writeText(text)
                 .then(() => {
-                    console.log('文本已成功复制到剪贴板');
                     alert('复制成功！');
                 })
                 .catch(err => {
-                    console.error('复制失败: ', err);
                     alert('复制失败，请检查浏览器权限。');
                 });
         }
@@ -429,166 +486,190 @@
 
 
         function toQBase64(str) {
+
+            const match = btoa(str).match(/=+$/)
+
+
+            let d = ""
+
+            if (match) {
+                for (let i = 1; i <= match[0].length; i++) {
+                    d += "%3D"
+                }
+            }
+
+
             return btoa(str)
                 .replace(/\+/g, '-')
                 .replace(/\//g, '_')
-                .replace(/=+$/, '');
+                .replace(/=+$/, d);
         }
 
         function appInfoText() {
             return `
-            1.选择框,选处理模式或查看教程
-            2.第一个文本框,主要粘贴要处理的数据
-            3.第二个条形框,只要粘贴 你的 任意 cf 链接 , 或 url to ip&port 的名称 
-            4.第三个文本框,处理数据,后的结果
+           <p> 1.选择框,选处理模式或查看教程 </p>
+           <p> 2.第一个文本框,主要粘贴要处理的数据 </p>
+           <p> 3.第二个条形框,只要粘贴 你的 任意 cf 链接 , 或 url to ip&port 的名称 </p>
+           <p> 4.第三个文本框,处理数据,后的结果 </p>
             `
         }
 
         function getCensysText() {
+            const censysUrl = `<a href="https://platform.censys.io" target="_blank" rel="noopener noreferrer" > https://platform.censys.io </a>`
+            const heUrl = `<a href="https://bgp.he.net" target="_blank" rel="noopener noreferrer" > https://bgp.he.net </a>`
             return `
-            搜索引擎:https://platform.censys.io (复杂,搜索精准高,要找到更好结果的老司机选择)
-            (免费账号,每月 搜索100次, 每页100条,不能翻页,无法下载(其实不登录一样可以搜索,换ip就可以,不过额度好低)
-            不要点击看详细ip信息,会消耗额度(勿点), 
-            因为每次100条, 所以 搜索 ip段 不要设置太大, host.ip:{x.x.x.x/24 , x.x.x.x/24} 两三个 x.x.x.x/24 段 同时搜索 ,或 单个 x.x.x.x/16 ,具体看结果添加ip段 
-            但命中率高,更新快)
-            *n*
-            1.搜索
-            1.1.搜索完整代码例子(在免费额度高效找出有用ip):
-            host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.autonomous_system.asn:"906" and host.location.country="United States" and host.ip:{"154.17.0.0/16" , "154.21.0.0/16" , "154.26.0.0/16" , "69.63.0.0/16"}
-            *n*
-            1.2.搜索代码分析: 
-            1.2.1.不用改动部分,(cf 信息与状态)
-            host.services.software:(vendor = "cloudflare" and product = "waf") 
-            host.services.endpoints.http.status_code:"403" //改 "400" 精度更高
-            ( 或 一起 使用,
-             host.services.endpoints.http.status_code:{403,400}
-            )
-             1.2.2.主要改动部分
-             host.autonomous_system.asn:"906" // 指定 vps 的 asn (例如: "25820")
-             host.location.country="United States" // 指定 vps 的 地区 (例如: HongKong)
-             host.ip:{"154.17.0.0/16" , "154.21.0.0/16" , "154.26.0.0/16" , "69.63.0.0/16"} // 指定 搜索的ip段 (例子中,已经超过100条,免费额度不够)
-             ( 
-             如果 搜索 x.x.x.x/24 (可以从 https://bgp.he.net 找到 asn 的 ip段 ) 不用指定 host.autonomous_system.asn , host.location.country (建议两三个/24,不然容易超过100条)
-             例子: host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.ip:"154.17.224.0/24" // 不建议单个ip段,容易浪费额度 多个ip段 host.ip:{"154.17.224.0/24","154.17.225.0/24","154.17.226.0/24"}
-             如果 搜索 x.x.x.x/16 , x.x.x.x/8 需要指定 host.autonomous_system.asn , host.location.country (/16 , /8 ip太多 会现在 其他 asn 其他 地区的ip ,免费额度不够)
-             例子: host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.autonomous_system.asn:"906" and host.location.country="United States" and host.ip:"154.17.0.0/16"  // 不建议单个ip段,容易浪费额度 多个ip段 host.ip:{ "154.26.0.0/16" , "69.0.0.0/8}
-             )
-             ps.生成搜索代码(高效并节约额度)
-             先在 https://bgp.he.net 找到 vps 供应商 的 ip 段 (可选择工具自带, 获取 ip段 列表 或  各 vps 优化 ip 段列表 查看 ip 段)
-             选择 生成 censys 代码 , 复制 ip 段(格式: x.x.x.x/x .... ,后面没用代码自动过滤,建议一次不要太多ip段)
-             粘贴到一个文本框,点击提交,即可生成!
-             *n*
-             2.下载结果:
-             免费用户是无法下载,只能网页提取数据, 直接 选中所有 网页 搜索出来的结果,然后复制! (复制ip信息部分既可,自动去取网页样式和布局)
-             *n*
-             3.数据处理:
-             3.1.选择 censys 文本处理 模式
-             3.2.数据粘贴到 第一个文本框
-             3.3.你的 任意 cf 链接 粘贴到 第二个条形框
-             3.4.点击提交 , 第三个文本框出结果
-             *n*
-             4.测试结果:
-             4.1.生成链接,不是所以都有效的,需要使用v2rayN 大量测试
-             4.2.建议在,v2rayN,创建一个测试组
-             4.3.将结果粘贴到测试组,按 Crtl+a 全选, 再 按 Crtl+r 测试 链接, 有延迟,就是可用的!
-             4.4.点击延迟排序,再选中无效的链接再测多几次(找漏网之鱼)
-             4.5.最后,v2rayN 鼠标 右键菜单选择 按测试结果移除无效             
+            <p> 搜索引擎: ${censysUrl} (复杂,搜索精准高,要找到更好结果的老司机选择) </p>
+            (免费账号,每月 搜索100次, 每页100条,不能翻页,无法下载(其实不登录一样可以搜索,换ip就可以,不过额度好低)<br\>
+            不要点击看详细ip信息,会消耗额度(勿点), <br\>
+            因为每次100条, 所以 搜索 ip段 不要设置太大, host.ip:{x.x.x.x/24 , x.x.x.x/24} 两三个 x.x.x.x/24 段 同时搜索 ,或 单个 x.x.x.x/16 ,具体看结果添加ip段 <br\>
+            但命中率高,更新快)<br\>
+            <br\>
+            <p> 1.搜索 </p>
+            <p> 1.1.搜索完整代码例子(在免费额度高效找出有用ip): </p>
+            host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.autonomous_system.asn:"906" and host.location.country="United States" and host.ip:{"154.17.0.0/16" , "154.21.0.0/16" , "154.26.0.0/16" , "69.63.0.0/16"}<br\>
+            <br\>
+            <p> 1.2.搜索代码分析: </p>
+            <p>1.2.1.不用改动部分,(cf 信息与状态)<br\>
+            host.services.software:(vendor = "cloudflare" and product = "waf") <br\>
+            host.services.endpoints.http.status_code:"403" //改 "400" 精度更高<br\>
+            ( 或 一起 使用,<br\>
+             host.services.endpoints.http.status_code:{403,400}<br\>
+            )<br\>
+             <p> 1.2.2.主要改动部分 </p>
+             host.autonomous_system.asn:"906" // 指定 vps 的 asn (例如: "25820")<br\>
+             host.location.country="United States" // 指定 vps 的 地区 (例如: HongKong)<br\>
+             host.ip:{"154.17.0.0/16" , "154.21.0.0/16" , "154.26.0.0/16" , "69.63.0.0/16"} // 指定 搜索的ip段 (例子中,已经超过100条,免费额度不够)<br\>
+             ( <br\>
+             如果 搜索 x.x.x.x/24 (可以从 ${heUrl} 找到 asn 的 ip段 ) 不用指定 host.autonomous_system.asn , host.location.country (建议两三个/24,不然容易超过100条)<br\>
+             例子: host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.ip:"154.17.224.0/24" // 不建议单个ip段,容易浪费额度 多个ip段 host.ip:{"154.17.224.0/24","154.17.225.0/24","154.17.226.0/24"}<br\>
+             如果 搜索 x.x.x.x/16 , x.x.x.x/8 需要指定 host.autonomous_system.asn , host.location.country (/16 , /8 ip太多 会现在 其他 asn 其他 地区的ip ,免费额度不够)<br\>
+             例子: host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:"403" and host.autonomous_system.asn:"906" and host.location.country="United States" and host.ip:"154.17.0.0/16"  // 不建议单个ip段,容易浪费额度 多个ip段 host.ip:{ "154.26.0.0/16" , "69.0.0.0/8}<br\>
+             )<br\>
+             <p> ps.生成搜索代码(高效并节约额度) </p>
+             先在 ${heUrl} 找到 vps 供应商 的 ip 段 (可选择工具自带, 获取 ip段 列表 或  各 vps 优化 ip 段列表 查看 ip 段)<br\>
+             选择 生成 censys 代码 , 复制 ip 段(格式: x.x.x.x/x .... ,后面没用代码自动过滤,建议一次不要太多ip段)<br\>
+             粘贴到一个文本框,点击提交,即可生成!<br\>
+             <br\>
+             <p> 2.下载结果: </p>
+             免费用户是无法下载,只能网页提取数据, 直接 选中所有 网页 搜索出来的结果,然后复制! (复制ip信息部分既可,自动去取网页样式和布局)<br\>
+             <br\>
+            <p> 3.数据处理: </p>
+             3.1.选择 censys 文本处理 模式<br\>
+             3.2.数据粘贴到 第一个文本框<br\>
+             3.3.你的 任意 cf 链接 粘贴到 第二个条形框<br\>
+             3.4.点击提交 , 第三个文本框出结果<br\>
+             <br\>
+             <p> 4.测试结果: </p>
+             4.1.生成链接,不是所以都有效的,需要使用v2rayN 大量测试<br\>
+             4.2.建议在,v2rayN,创建一个测试组<br\>
+             4.3.将结果粘贴到测试组,按 Crtl+a 全选, 再 按 Crtl+r 测试 链接, 有延迟,就是可用的!<br\>
+             4.4.点击延迟排序,再选中无效的链接再测多几次(找漏网之鱼)<br\>
+             4.5.最后,v2rayN 鼠标 右键菜单选择 按测试结果移除无效<br\>
         `
         }
 
         function getFofaText() {
+            const fofaUrl = `<a href="https://fofa.info" target="_blank" rel="noopener noreferrer" > https://fofa.info </a>`
+            const heUrl = `<a href="https://bgp.he.net" target="_blank" rel="noopener noreferrer" > https://bgp.he.net </a>`
             return `
-           搜索引擎:https://fofa.info (比较简单,搜索精准低,小白优先选择)
-           (免费账号,每月 搜索300次,下载3000条
-           简单易用,但更新慢,一些数据过时)
-           *n*
-           1.搜索
-           1.1.搜索完整代码例子(在免费额度高效找出有用ip):
-           cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn=="906" && country=="US" && (ip="154.17.0.0/16" || ip="154.21.0.0/16" || ip="154.26.0.0/16" || ip="69.63.0.0/16")
-           *n*
-           1.2.搜索代码分析: 
-           1.2.1.不用改动部分,(cf 信息与状态)
-           cloud_name="Cloudflare" 
-           status_code="403"
-           tls.version="TLS 1.3"
-           1.2.2.主要改动部分:
-           asn=="906" // 指定 vps 的 asn (例如: "25820")
-           country=="US" // 指定 vps 的 地区 (例如: HK)
-           (ip="154.17.0.0/16" || ip="154.21.0.0/16" || ip="154.26.0.0/16" || ip="69.63.0.0/16") // 指定 搜索的ip段  (例子中,之前搜索过大约有700多条,免费额度完全够下载,不过会有漏网之鱼)
-           ( 
-           如果 搜索 x.x.x.x/24 (可以从 https://bgp.he.net 找到 asn 的 ip段 ) 不用指定 asn , country 
-           例子:  cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && ip="154.17.224.0/24" // 不建议单个ip段,容易浪费额度 多个ip段 (ip="154.17.224.0/24" || ip="154.17.225.0/24" || ip="154.17.226.0/24" )
-           如果 搜索 x.x.x.x/16 , x.x.x.x/8 需要指定 asn , country (/16 , /8 ip太多,额度免费不够)
-           例子: cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn=="906" && country=="US" && ip="154.17.0.0/16" // 不建议单个ip段,容易浪费额度 多个ip段 (ip="154.17.0.0/16" || ip="69.0.0.0/8")
-           ps.生成搜索代码(高效并节约额度)
-           先在 https://bgp.he.net 找到 vps 供应商 的 ip 段 (可选择工具自带, 获取 ip段 列表 或  各 vps 优化 ip 段列表 查看 ip 段)
-           选择 生成 fofa 代码 , 复制 ip 段(格式: x.x.x.x/x .... ,后面没用代码自动过滤,建议一次不要太多ip段)
-           粘贴到一个文本框,点击提交,即可生成!
-           )
-           *n*
-           2.下载结果:
-           fofa.info 保存结果,下载csv文件,复制所有csv文件内容
-           *n*
-           3.数据处理:
-           3.1.选择 fofa 文本处理 模式
-           3.2.数据粘贴到 第一个文本框
-           3.3.你的 任意 cf 链接 粘贴到 第二个条形框
-           3.4.点击提交 , 第三个文本框出结果
-           *n*
-           4.测试结果:
-           4.1.生成链接,不是所以都有效的,需要使用v2rayN 大量测试
-           4.2.建议在,v2rayN,创建一个测试组
-           4.3.将结果粘贴到测试组,按 Crtl+a 全选, 再 按 Crtl+r 测试 链接, 有延迟,就是可用的!
-           4.4.点击延迟排序,再选中无效的链接再测多几次(找漏网之鱼)
-           4.5.最后,v2rayN 鼠标 右键菜单选择 按测试结果移除无效
+          <p> 搜索引擎: ${fofaUrl} (比较简单,搜索精准低,小白优先选择) </p>
+           (免费账号,每月 搜索300次,下载3000条<br\>
+           简单易用,但更新慢,一些数据过时)<br\>
+           <br\>
+           <p> 1.搜索 </p>
+           1.1.搜索完整代码例子(在免费额度高效找出有用ip):<br\>
+           cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn=="906" && country=="US" && (ip="154.17.0.0/16" || ip="154.21.0.0/16" || ip="154.26.0.0/16" || ip="69.63.0.0/16")<br\>
+           <br\>
+           <p> 1.2.搜索代码分析: </p>
+           <p> 1.2.1.不用改动部分,(cf 信息与状态) <p>
+           cloud_name="Cloudflare" <br\>
+           status_code="403"<br\>
+           tls.version="TLS 1.3"<br\>
+           <p> 1.2.2.主要改动部分: </p>
+           asn=="906" // 指定 vps 的 asn (例如: "25820")<br\>
+           country=="US" // 指定 vps 的 地区 (例如: HK)<br\>
+           (ip="154.17.0.0/16" || ip="154.21.0.0/16" || ip="154.26.0.0/16" || ip="69.63.0.0/16") // 指定 搜索的ip段  (例子中,之前搜索过大约有700多条,免费额度完全够下载,不过会有漏网之鱼)<br\>
+           ( <br\>
+           如果 搜索 x.x.x.x/24 (可以从 ${heUrl} 找到 asn 的 ip段 ) 不用指定 asn , country <br\>
+           例子:  cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && ip="154.17.224.0/24" // 不建议单个ip段,容易浪费额度 多个ip段 (ip="154.17.224.0/24" || ip="154.17.225.0/24" || ip="154.17.226.0/24" )<br\>
+           如果 搜索 x.x.x.x/16 , x.x.x.x/8 需要指定 asn , country (/16 , /8 ip太多,额度免费不够)<br\>
+           例子: cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn=="906" && country=="US" && ip="154.17.0.0/16" // 不建议单个ip段,容易浪费额度 多个ip段 (ip="154.17.0.0/16" || ip="69.0.0.0/8")<br\>
+           <p> ps.生成搜索代码(高效并节约额度) </p>
+           先在 ${heUrl} 找到 vps 供应商 的 ip 段 (可选择工具自带, 获取 ip段 列表 或  各 vps 优化 ip 段列表 查看 ip 段)<br\>
+           选择 生成 fofa 代码 , 复制 ip 段(格式: x.x.x.x/x .... ,后面没用代码自动过滤,建议一次不要太多ip段)<br\>
+           粘贴到一个文本框,点击提交,即可生成!<br\>
+           )<br\>
+           <br\>
+           <p> 2.下载结果: </p>
+           fofa.info 保存结果,下载csv文件,复制所有csv文件内容<br\>
+           <br\>
+           <p> 3.数据处理: </p>
+           3.1.选择 fofa 文本处理 模式<br\>
+           3.2.数据粘贴到 第一个文本框<br\>
+           3.3.你的 任意 cf 链接 粘贴到 第二个条形框<br\>
+           3.4.点击提交 , 第三个文本框出结果<br\>
+           <br\>
+           <p> 4.测试结果: </p>
+           4.1.生成链接,不是所以都有效的,需要使用v2rayN 大量测试<br\>
+           4.2.建议在,v2rayN,创建一个测试组<br\>
+           4.3.将结果粘贴到测试组,按 Crtl+a 全选, 再 按 Crtl+r 测试 链接, 有延迟,就是可用的!<br\>
+           4.4.点击延迟排序,再选中无效的链接再测多几次(找漏网之鱼)<br\>
+           4.5.最后,v2rayN 鼠标 右键菜单选择 按测试结果移除无效<br\>
         `
         }
 
         function asnText(asn) {
-            const censys = encodeURIComponent(`host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:{403,400} and host.autonomous_system.asn:"${asn}"`)
-            const fofa = toQBase64(`cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn=="${asn}"`)
-            return `` +
-                `https://bgp.he.net/AS${asn}#_prefixes\n` +
-                `(\n` +
-                `censys 搜索代码:\n` +
-                `所有: https://platform.censys.io/search?q=${censys}\n` +
-                `fofa 搜索代码:\n` +
-                `所有: https://fofa.info/result?qbase64=${fofa}\n` +
-                `)`
+            const heUrl = `<a href="https://bgp.he.net/AS${asn}#_prefixes" target="_blank" rel="noopener noreferrer" > https://bgp.he.net/AS${asn}#_prefixes </a>`
+            const cCmd = encodeURIComponent(`host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:{403,400} and host.autonomous_system.asn:"${asn}"`);
+            const fCmd = toQBase64(`cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn="${asn}"`);
+            const cUrl = `<a href="https://platform.censys.io/search?q=${cCmd}" target="_blank" rel="noopener noreferrer" > https://platform.censys.io/search?q=${cCmd} </a>`
+            const fUrl = `<a href="https://fofa.info/result?qbase64=${fCmd}" target="_blank" rel="noopener noreferrer" > https://fofa.info/result?qbase64=${fCmd} </a>`
+
+            return `
+                查看 ip 段: ${heUrl} <br\>
+                (<br\>
+                censys 搜索代码: host.services.software:(vendor = "cloudflare" and product = "waf") and host.services.endpoints.http.status_code:{403,400} and host.autonomous_system.asn:"${asn}" (所有) <br\>
+                所有url: ${cUrl} <br\>
+                fofa 搜索代码: cloud_name="Cloudflare" && status_code="403" && tls.version="TLS 1.3" && asn="${asn}" (所有) <br\>
+                所有url: ${fUrl} <br\>
+                )
+                `
         }
 
         function getIpListText() {
+            const heUrl = `<a href="https://bgp.he.net" target="_blank" rel="noopener noreferrer" > https://bgp.he.net </a>`
+            const pingUrl = `<a href="https://ping.pe" target="_blank" rel="noopener noreferrer" > https://ping.pe </a>`
+
             return `
-            搜索引擎:https://bgp.he.net
-            用 bgp.he.net 查 ASN → 看 IPv4 Prefixes
-            *n*
-            大妈 所有ipv4段:
-            ${asnText('906')}
-            *n*
-            瓦工 所有ipv4段:
-            ${asnText('25820')}
-            *n*
-            AS979 NetLab Global 所有ipv4段:
-            ${asnText('979')}
-            *n*
-            AS8796 FASTNET DATA INC 所有ipv4段:
-            ${asnText('8796')}
-            *n*
-            Evoxt (主打马来鸡) 所有ipv4段:
-            ${asnText('14944')}
-            *n*
-            AS1054 Zont LLC (VMISS 三网) 所有ipv4段:
-            ${asnText('1054')}      
-            *n*
-            阿里云 所有ipv4段:
-            ${asnText('45102')}
-            *n*
-            *n*
-            如何找出优化ip:
-            首先 在 x.x.x.x/24 ping (例如: 154.17.224.0/24 154.17.224.0-154.17.224.255 中 随机能 ping 通的 ip)
-            然后上 https://ping.pe 测试 ip 
-            主要观察 ip 的 延迟 , 掉包 是否稳定
-            重要查看国内去程有包含优化线路(AS4089,AS9929,AS58807 有可以确定为优化线路)
+            搜索引擎: ${heUrl} <br\>
+            用 bgp.he.net 查 ASN → 看 IPv4 Prefixes <br\>
+            <br\>
+            大妈 所有ipv4段: <br\> 
+            ${asnText('906')} <br\>
+            <br\>
+            瓦工 所有ipv4段:<br\>
+            ${asnText('25820')}<br\>
+            <br\>
+            AS979 NetLab Global 所有ipv4段:<br\>
+            ${asnText('979')}<br\>
+            <br\>
+            AS8796 FASTNET DATA INC 所有ipv4段:<br\>
+            ${asnText('8796')}<br\>
+            <br\>
+            Evoxt (主打马来鸡) 所有ipv4段:<br\>
+            ${asnText('149440')}<br\>
+            <br\>
+            AS1054 Zont LLC (VMISS 三网) 所有ipv4段:<br\>
+            ${asnText('1054')} <br\>
+            <br\>
+            阿里云 所有ipv4段:<br\>
+            ${asnText('45102')}<br\>
+            <br\>
+            如何找出优化ip:<br\>
+            首先 在 x.x.x.x/24 ping (例如: 154.17.224.0/24 154.17.224.0-154.17.224.255 中 随机能 ping 通的 ip)<br\>
+            然后上 ${pingUrl} 测试 ip <br\>
+            主要观察 ip 的 延迟 , 掉包 是否稳定<br\>
+            重要查看国内去程有包含优化线路(AS4089,AS9929,AS58807 有可以确定为优化线路)<br\>
 
         `
         }
@@ -596,7 +677,7 @@
         function dmitHighIpText() {
             return `
             大妈 优化 ip 段 (更新时间 26.01, 三网优化,常态稳定,有 ping)
-			*n*
+
 			69.63.192.0/20
 			69.63.192.0/24
 			69.63.193.0/24
@@ -720,7 +801,7 @@
         function bwhHighIpText() {
             return `
 			瓦工 优化 ip段 (更新时间 26.01, 三网优化,常态稳定,有 ping)
-			*n*
+
 			23.106.152.0/21
 			23.252.104.0/22
 			45.62.112.0/21
@@ -795,7 +876,7 @@
         function as979HighIpText() {
             return `
 			AS979 优化 ip段 (更新时间 26.01,优化线路,但不一定三网全稳,没 ping)
-			*n*
+
             23.144.132.0/24
             38.22.88.0/21
             38.22.88.0/24
