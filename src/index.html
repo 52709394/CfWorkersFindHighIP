@@ -10,6 +10,18 @@
             padding: 20px;
         }
 
+        .scrollable-div {
+            max-height: 300px;
+            /* 设置最大高度为 300px */
+            overflow-y: auto;
+            /* 当内容垂直溢出时，显示垂直滚动条 */
+            /* 或使用 overflow: auto; 自动处理水平和垂直滚动 */
+            /* overflow: hidden; /* 隐藏滚动条 */
+            border: 1px solid #ccc;
+            /* 添加边框以便观察 */
+            padding: 10px;
+        }
+
         select {
             display: block;
             margin: 0 auto 10px auto;
@@ -71,7 +83,7 @@
 
         <button style="float: right;" onclick="_clear()">清除</button>
         <p></p>
-        <div id="output"></div>
+        <div class="scrollable-div" id="output"></div>
         <p></p>
         <button id="copy" onclick="copy()">复制</button>
     </div>
