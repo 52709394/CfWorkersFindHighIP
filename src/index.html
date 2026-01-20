@@ -167,10 +167,9 @@
             UserDate = "";
 
             let resultLines;
-            if (mode === "generateCensys") {
+            if (mode === "generateCensys" || mode === "generateFofa") {
                 resultLines = generateCensysFofa(mode, text, extra);
-            } else if (mode === "generateFofa") {
-                resultLines = generateCensysFofa(mode, text, extra);
+
             } else if (mode === "setCensys") {
                 let urls = ""
                 const match = splitUrl(extra);
@@ -205,24 +204,10 @@
                     document.getElementById("copy").style.visibility = 'hidden';
                 }
 
-
-            } else if (mode === "toIpPort") {
-
-                const ips = toIpPort(text, extra)
-                
-                UserDate = ips
-                resultLines = ips.replace(/\n/g, "<br\>");
-
-                if (UserDate) {
-                    document.getElementById("copy").style.visibility = 'visible';
-                } else {
-                    document.getElementById("copy").style.visibility = 'hidden';
-                }
-
-            } else if (mode === "toUrl") {
-                const urls = toProxyUrl(text, extra)
-                UserDate = urls
-                resultLines = urls.replace(/\n/g, "<br\>");
+            } else if (mode === "toIpPort" || mode === "toUrl") {
+                const result = toUrlOrIpPort(mode, text, extra)
+                UserDate = result
+                resultLines = result.replace(/\n/g, "<br\>");
 
                 if (UserDate) {
                     document.getElementById("copy").style.visibility = 'visible';
@@ -501,69 +486,50 @@
             return urls
         }
 
-        function toIpPort(text, extra) {
+        function toUrlOrIpPort(mode, text, extra) {
 
-            let ips = ""
+            let ipRe
+            let strA, strB, strC
 
-            const re = /\@(\d+\.\d+\.\d+\.\d+)\:(\d+)(?:\\|)\?/;
+            if (mode === "toUrl") {
+                const urlMatch = splitUrl(extra)
 
-            const urls = (text + "\n").split("\n")
-
-            for (let i = 0; i < urls.length; i++) {
-                if (urls[i] === "") {
-                    continue
+                if (!urlMatch) {
+                    return ""
                 }
+                strA = urlMatch[1]
+                strB = ":"
+                strC = urlMatch[2] + "\n"
 
-                const match = urls[i].match(re)
+                ipRe = /(\d+\.\d+\.\d+\.\d+)\s*(?:\,|\:|)\s*(\d+)/;
+            } else {
 
-                if (match) {
-                    if (extra) {
-                        ips += `${match[1]},${match[2]}#${extra}\n`
-                    } else {
-                        ips += `${match[1]},${match[2]}\n`
-                    }
+                strA = ""
+                strB = ","
+                if (extra) {
+                    strC = "#" + extra + "\n"
                 } else {
-
-                    if (urls[i].startsWith("vmess://")) {
-
-                        const str = base64DecodeUnicode(urls[i].slice(8))
-
-                        if (str) {
-                            const json = JSON.parse(str)
-                            if (json.add && json.port) {
-                                if (extra) {
-                                    ips += `${json.add},${json.port}#${extra}\n`
-                                } else {
-                                    ips += `${json.add},${json.port}\n`
-                                }
-                            }
-                        }
-                    }
+                    strC = "\n"
                 }
 
+                ipRe = /\@(\d+\.\d+\.\d+\.\d+)\:(\d+)(?:\\|)\?/;
+
             }
 
-            return ips
-        }
-
-        function toProxyUrl(text, proxyUrl) {
-
-            const urlMatch = splitUrl(proxyUrl)
-
-            if (!urlMatch) {
-                return ""
-            }
-
-            let urls = ""
-            const re = /(\d+\.\d+\.\d+\.\d+)\s*(?:\,|\:|)\s*(\d+)/;
+            let result = ""
 
             const ips = (text + "\n").split("\n")
 
             for (let i = 0; i < ips.length; i++) {
-                const match = ips[i].match(re)
+
+                if (ips == "") {
+                    continue
+                }
+
+                const match = ips[i].match(ipRe)
+
                 if (match) {
-                    const ip = match[1] + ":" + match[2]
-                    urls += urlMatch[1] + ip + urlMatch[2] + "\n"
+                    result += strA + match[1] + strB + match[2] + strC
                 } else {
                     if (ips[i].startsWith("vmess://")) {
 
@@ -572,8 +538,7 @@
                         if (str) {
                             const json = JSON.parse(str)
                             if (json.add && json.port) {
-                                const ip = json.add + ":" + json.port
-                                urls += urlMatch[1] + ip + urlMatch[2] + "\n"
+                                result += strA + json.add + strB + json.port + strC
                             }
                         }
 
@@ -581,7 +546,8 @@
 
                 }
             }
-            return urls
+
+            return result
         }
 
         function _clear() {
