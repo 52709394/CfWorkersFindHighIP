@@ -168,7 +168,7 @@
 
             let resultLines;
             if (mode === "generateCensys" || mode === "generateFofa") {
-                resultLines = generateCensysFofa(mode, text, extra);
+                resultLines = generateCensysOrFofa(mode, text, extra);
 
             } else if (mode === "setCensys") {
                 let urls = ""
@@ -232,7 +232,7 @@
             document.getElementById("output").innerHTML = resultLines;
         }
 
-        function generateCensysFofa(mode, text, size) {
+        function generateCensysOrFofa(mode, text, size) {
 
             let isJump = true;
             let url
@@ -470,7 +470,7 @@
             }
 
             let urls = ""
-            const ipRe = /^\s*https:\/\/(\d+\.\d+\.\d+\.\d+(?:\:\d+)?)\s+/mg;
+            const ipRe = /^\s*https:\/\/(\d+\.\d+\.\d+\.\d+(?:\:\d+|))(?:\s+|$)/mg;
 
 
             for (const p of text.matchAll(ipRe)) {
@@ -737,8 +737,11 @@
         }
 
         function getIpListText() {
-            const heUrl = `<a href="https://bgp.he.net" target="_blank" rel="noopener noreferrer" > https://bgp.he.net </a>`
-            const pingUrl = `<a href="https://ping.pe" target="_blank" rel="noopener noreferrer" > https://ping.pe </a>`
+            const heUrl = `<a href="https://bgp.he.net" target="_blank" rel="noopener noreferrer" > https://bgp.he.net </a>`;
+            const censysUrl = `<a href="https://platform.censys.io" target="_blank" rel="noopener noreferrer" > https://platform.censys.io </a>`
+            const fofaUrl = `<a href="https://fofa.info" target="_blank" rel="noopener noreferrer" > https://fofa.info </a>`
+            const pingUrl = `<a href="https://www.itdog.cn/ping" target="_blank" rel="noopener noreferrer" > https://www.itdog.cn/ping </a>`;
+            const routeUrl = `<a href="https://www.itdog.cn/traceroute" target="_blank" rel="noopener noreferrer" > https://www.itdog.cn/traceroute </a>`;
 
             return `
             搜索引擎: ${heUrl} <br\>
@@ -765,12 +768,11 @@
             阿里云 所有ipv4段:<br\>
             ${asnText('45102')}<br\>
             <br\>
-            如何找出优化ip:<br\>
-            首先 在 x.x.x.x/24 ping (例如: 154.17.224.0/24 154.17.224.0-154.17.224.255 中 随机能 ping 通的 ip)<br\>
-            然后上 ${pingUrl} 测试 ip <br\>
-            主要观察 ip 的 延迟 , 掉包 是否稳定<br\>
-            重要查看国内去程有包含优化线路(AS4089,AS9929,AS58807 有可以确定为优化线路)<br\>
-
+            如何 测试 ip 段 是否为优化:<br\>
+            1.在 ${censysUrl} 或  ${fofaUrl} , 搜索 x.x.x.x/24 , 就会返回一堆 该 ip 段,可以访问的 ip , 选择其中一个!(可能信息过时,多测试一下)<br\>
+            2.在 ${routeUrl} 测试去程, 是否有 包含优化线路的路由 (AS4089,AS9929,AS58807)<br\>
+            (ps:其实跳过第1步, 直接测试 x.x.x.0 的去程, 也是找出来的) <br\>
+            3.在 ${pingUrl} 测试 ip 在国内各地区 延迟,掉包, 确定是否稳定!(注意,有些 ip 段虽然是优化线路,但是还是有不稳定的) <br\>
         `
         }
 
