@@ -126,15 +126,12 @@
             UserDate = "";
 
             if (isInfo) {
-                document.getElementById("main").style.visibility = 'hidden'
-                document.getElementById("info").style.visibility = 'visible'
+                document.getElementById("main").style.display = 'none'
+                document.getElementById("info").style.display = 'block'
             } else {
-
-                document.getElementById("info").innerHTML = ""
-                document.getElementById("main").style.visibility = 'visible'
-                document.getElementById("info").style.visibility = 'hidden'
+                document.getElementById("main").style.display = 'block'
+                document.getElementById("info").style.display = 'none'
                 document.getElementById("copy").style.visibility = 'hidden'
-
                 return
             }
 
@@ -162,7 +159,7 @@
                 text = text.replace(/\n/g, "<br\>");
             } else if (mode === "evoxtHighIp") {
                 text = evoxtHighIpText();
-                text = text.replace(/\n/g, "<br\>");        
+                text = text.replace(/\n/g, "<br\>");
             }
 
 
