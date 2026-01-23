@@ -178,16 +178,7 @@
                 resultLines = generateCensysOrFofa(mode, text, extra);
 
             } else if (mode === "setCensys") {
-                let urls = ""
-                const match = splitUrl(extra);
-
-                if (!match) {
-                    return ""
-                }
-
-                for (const ipText of splitCensysByIP(text)) {
-                    urls += setCensysProxyUrl(ipText, match)
-                }
+                const urls = setCensysProxyUrl(text, extra)
 
                 UserDate = urls;
                 resultLines = urls.replace(/\n/g, "<br\>");
@@ -259,7 +250,7 @@
             }
 
             if (/^\d+$/.test(size)) {
-                if (size > 1 && size < 17) {
+                if (size > 1 && size < 33) {
                     isJump = false;
                 }
             }
@@ -311,6 +302,8 @@
                 }
 
             }
+
+            ipcs = unique(ipcs)
 
 
             size -= 0
@@ -417,13 +410,25 @@
             return match
         }
 
-        function setCensysProxyUrl(text, urlMatch) {
+        function setCensysProxyUrl(text, proxyUrl) {
 
-            let urls = ""
-            const ipMatch = text.match(/\d+\.\d+\.\d+\.\d+/)
-            const portsMatch = text.matchAll(/\s*(\d+)\s*\/\s*HTTP/g)
-            for (const p of portsMatch) {
-                const ip = ipMatch[0] + ":" + p[1]
+            let ips = []
+            let urls
+            const urlMatch = splitUrl(proxyUrl);
+
+            if (!urlMatch) {
+                return ""
+            }
+
+            for (const ipText of splitCensysByIP(text)) {
+                const ipMatch = ipText.match(/\d+\.\d+\.\d+\.\d+/)
+                const portsMatch = ipText.matchAll(/\s*(\d+)\s*\/\s*HTTP/g)
+                for (const p of portsMatch) {
+                    ips.push(ipMatch[0] + ":" + p[1])
+                }
+            }
+
+            for (const ip of unique(ips)) {
                 urls += urlMatch[1] + ip + urlMatch[2] + "\n"
             }
 
@@ -477,18 +482,24 @@
             }
 
             let urls = ""
-            const ipRe = /^\s*https:\/\/(\d+\.\d+\.\d+\.\d+(?:\:\d+|))(?:\s+|$)/mg;
+            const ips = []
+            const ipRe = /^\s*https:\/\/(\d+\.\d+\.\d+\.\d+)((?:\:\d+|))(?:\s+|$)/mg;
 
 
             for (const p of text.matchAll(ipRe)) {
                 let ip
-                if (p[1].match(/\:\d+$/)) {
-                    ip = p[1]
+                if (p[2]) {
+                    ips.push(p[1] + p[2])
                 } else {
-                    ip = p[1] + ":443"
+                    ips.push(p[1] + ":443")
                 }
+            }
+
+
+            for (const ip of unique(ips)) {
                 urls += urlMatch[1] + ip + urlMatch[2] + "\n"
             }
+
 
             return urls
         }
@@ -524,34 +535,39 @@
             }
 
             let result = ""
+            let ips = []
 
-            const ips = (text + "\n").split("\n")
+            const ipsStr = (text + "\n").split("\n")
 
-            for (let i = 0; i < ips.length; i++) {
+            for (const ipStr of ipsStr) {
 
-                if (ips == "") {
+                if (ipStr == "") {
                     continue
                 }
 
-                const match = ips[i].match(ipRe)
+                const match = ipStr.match(ipRe)
 
                 if (match) {
-                    result += strA + match[1] + strB + match[2] + strC
+                    ips.push(match[1] + strB + match[2])
                 } else {
-                    if (ips[i].startsWith("vmess://")) {
+                    if (ipStr.startsWith("vmess://")) {
 
-                        const str = base64DecodeUnicode(ips[i].slice(8))
+                        const str = base64DecodeUnicode(ipStr.slice(8))
 
                         if (str) {
                             const json = JSON.parse(str)
                             if (json.add && json.port) {
-                                result += strA + json.add + strB + json.port + strC
+                                ips.push(json.add + strB + json.port)
                             }
                         }
 
                     }
 
                 }
+            }
+
+            for (const ip of unique(ips)) {
+                result += strA + ip + strC
             }
 
             return result
@@ -610,6 +626,16 @@
                 .replace(/\+/g, '-')
                 .replace(/\//g, '_')
                 .replace(/=+$/, d);
+        }
+
+        function unique(arr) {
+            const result = [];
+            for (const item of arr) {
+                if (!result.includes(item)) {
+                    result.push(item);
+                }
+            }
+            return result;
         }
 
         function appInfoText() {
