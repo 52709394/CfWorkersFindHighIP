@@ -378,7 +378,7 @@
         }
 
         function splitUrl(url) {
-            const re = /^(.*?\@).*?\:\d+(?:\\|)(\?.*)$/
+            const re = /^(.*?\@).*?\:\d+(?:\/|)(\?.*)$/
             const match = url.match(re)
 
             if (!match) {
@@ -413,7 +413,7 @@
         function setCensysProxyUrl(text, proxyUrl) {
 
             let ips = []
-            let urls
+            let urls = ""
             const urlMatch = splitUrl(proxyUrl);
 
             if (!urlMatch) {
