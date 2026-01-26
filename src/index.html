@@ -64,6 +64,8 @@
         <option value="setFofa">fofa 文本处理</option>
         <option value="toIpPort">url to ip&port </option>
         <option value="toUrl"> ip&port to Url </option>
+        <option value="toIpPortAuto"> url to ip&port(auto) </option>
+        <option value="toUrlAuto"> ip&port to url(auto) </option>
     </select>
 
     <div id="info"></div>
@@ -87,7 +89,7 @@
     <script>
 
         let ModeVar = ""
-        let UserDate = ""
+        let UserData = ""
         document.getElementById("copy").style.visibility = 'hidden';
 
         function selectMode(mode) {
@@ -123,7 +125,7 @@
             document.getElementById("input").value = "";
             document.getElementById("output").innerHTML = "";
             document.getElementById("extra").value = "";
-            UserDate = "";
+            UserData = "";
 
             if (isInfo) {
                 document.getElementById("main").style.display = 'none'
@@ -162,16 +164,14 @@
                 text = text.replace(/\n/g, "<br\>");
             }
 
-
-
             document.getElementById("info").innerHTML = text
         }
 
-        function send() {
+        async function send() {
             const text = document.getElementById("input").value;
             const mode = document.getElementById("mode").value;
             const extra = document.getElementById("extra").value;
-            UserDate = "";
+            UserData = "";
 
             let resultLines;
             if (mode === "generateCensys" || mode === "generateFofa") {
@@ -180,10 +180,10 @@
             } else if (mode === "setCensys") {
                 const urls = setCensysProxyUrl(text, extra)
 
-                UserDate = urls;
+                UserData = urls;
                 resultLines = urls.replace(/\n/g, "<br\>");
 
-                if (UserDate) {
+                if (UserData) {
                     document.getElementById("copy").style.visibility = 'visible';
                 } else {
                     document.getElementById("copy").style.visibility = 'hidden';
@@ -193,10 +193,10 @@
 
 
                 const urls = setFofaProxyUrl(text, extra);
-                UserDate = urls;
+                UserData = urls;
                 resultLines = urls.replace(/\n/g, "<br\>");
 
-                if (UserDate) {
+                if (UserData) {
                     document.getElementById("copy").style.visibility = 'visible';
                 } else {
                     document.getElementById("copy").style.visibility = 'hidden';
@@ -204,14 +204,20 @@
 
             } else if (mode === "toIpPort" || mode === "toUrl") {
                 const result = toUrlOrIpPort(mode, text, extra)
-                UserDate = result
+                UserData = result
                 resultLines = result.replace(/\n/g, "<br\>");
 
-                if (UserDate) {
+                if (UserData) {
                     document.getElementById("copy").style.visibility = 'visible';
                 } else {
                     document.getElementById("copy").style.visibility = 'hidden';
                 }
+
+            } else if (mode === "toUrlAuto" || mode === "toIpPortAuto") {
+
+                const [ips, strA, strC] = toUrlOrIpPort(mode, text, extra)
+
+                UserData = await autoSetName(ips, strA, strC)
 
 
             } else {
@@ -226,6 +232,7 @@
                 }
             }
 
+            if (mode === "toUrlAuto" || mode === "toIpPortAuto") return;
 
             document.getElementById("output").innerHTML = resultLines;
         }
@@ -509,7 +516,7 @@
             let ipRe
             let strA, strB, strC
 
-            if (mode === "toUrl") {
+            if (mode === "toUrl" || mode === "toUrlAuto") {
                 const urlMatch = splitUrl(extra)
 
                 if (!urlMatch) {
@@ -517,20 +524,37 @@
                 }
                 strA = urlMatch[1]
                 strB = ":"
-                strC = urlMatch[2] + "\n"
+
+                if (mode === "toUrl") {
+                    strC = urlMatch[2] + "\n"
+                } else {
+                    const match = urlMatch[2].match(/(.*?)#/)
+
+                    if (match) {
+                        strC = match[1]
+                    } else {
+                        strC = urlMatch[2]
+                    }
+
+                }
+
 
                 ipRe = /(\d+\.\d+\.\d+\.\d+)\s*(?:\,|\:|)\s*(\d+)/;
             } else {
 
                 strA = ""
                 strB = ","
-                if (extra) {
-                    strC = "#" + extra + "\n"
+                if (mode === "toIpPortAuto") {
+                    strC = ""
                 } else {
-                    strC = "\n"
+                    if (extra) {
+                        strC = "#" + extra + "\n"
+                    } else {
+                        strC = "\n"
+                    }
                 }
 
-                ipRe = /\@(\d+\.\d+\.\d+\.\d+)\:(\d+)(?:\\|)\?/;
+                ipRe = /\@(\d+\.\d+\.\d+\.\d+)\:(\d+)(?:\/|)\?/;
 
             }
 
@@ -566,6 +590,10 @@
                 }
             }
 
+            if (mode === "toUrlAuto" || mode === "toIpPortAuto") {
+                return [unique(ips), strA, strC]
+            }
+
             for (const ip of unique(ips)) {
                 result += strA + ip + strC
             }
@@ -573,12 +601,61 @@
             return result
         }
 
+        async function autoSetName(ips, strA, strC) {
+
+            const send = document.getElementById("send")
+            const output = document.getElementById("output")
+
+            send.disabled = true;
+            output.innerHTML = ""
+            send.innerText = '处理中';
+            document.getElementById("copy").style.visibility = 'hidden';
+
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+            let result = "";
+
+
+            const total = ips.length
+
+            for (let i = 0; i < total; i++) {
+                const ipMatch = ips[i].match(/([0-9\.]+)(?:\:|\,)/);
+                if (!ipMatch) continue;
+
+                try {
+                    const res = await fetch(`https://api.country.is/${ipMatch[1]}`);
+                    const data = await res.json();
+                    result += strA + ips[i] + strC + `#${data.country}\n`;
+                    output.innerHTML += strA + ips[i] + strC + `#${data.country} <br\>`;
+                    send.innerText = `已处理${(i + 1)}条 (总数量${total})`;
+                } catch {
+                    result += strA + ips[i] + strC + '#none\n';
+                    output.innerHTML += strA + ips[i] + strC + '#none <br\>';
+                    send.innerText = `已处理${(i + 1)}条 (总数量${total})`;
+                }
+
+                await sleep(300);
+
+            }
+
+            send.disabled = false;
+            send.innerText = "提交";
+
+            if (result) {
+                document.getElementById("copy").style.visibility = 'visible';
+            } else {
+                document.getElementById("copy").style.visibility = 'hidden';
+            }
+
+            return result;
+        }
+
         function _clear() {
             document.getElementById("input").value = "";
             document.getElementById("extra").value = "";
         }
 
-        function copy(text = UserDate) {
+        function copy(text = UserData) {
             if (text === "") {
                 return
             }
